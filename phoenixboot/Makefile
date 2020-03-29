@@ -1,0 +1,40 @@
+### compilers and options
+CC	= gcc
+CFLAGS	= -O2 -mcpu=pentium -Wall -Werror
+CFLAGS += -DXBE
+LD	= ld
+LDFLAGS	= -s -S -T ldscript.ld
+OBJCOPY	= objcopy
+
+### objects
+OBJECTS	= header.o Intro.o load.o setup.o escape.o parse.o I2C_io.o BootParser.o BootString.o BootMemory.o VideoInitialization.o BootVgaInitialization.o
+
+RESOURCES = 
+TOPDIR  := $(shell /bin/pwd)
+
+# target:
+all	: clean bigsin image default.xbe
+
+image:
+	$(CC) $(TOPDIR)/imagebld/imagebld.c $(TOPDIR)/imagebld/sha1.c -o $(TOPDIR)/imagebld/image
+	
+default.elf : ${OBJECTS} ${RESOURCES}
+	${LD} -o $@ ${OBJECTS} ${RESOURCES} ${LDFLAGS}
+
+clean	:
+	rm -rf *.o *~ core *.core image ${OBJECTS} ${RESOURCES} default.elf default.xbe linux.iso $(TOPDIR)/imagebld/image
+
+### rules:
+%.o	: %.c
+	${CC} ${CFLAGS} -o $@ -c $<
+
+%.o	: %.S
+	${CC} -DASSEMBLER ${CFLAGS} -o $@ -c $<
+
+%.xbe : %.elf
+	${OBJCOPY} --output-target=binary --strip-all $< $@
+	$(TOPDIR)/imagebld/image -build $(TOPDIR)/default.xbe  $(TOPDIR)/vmlinuz $(TOPDIR)/initrd  $(TOPDIR)/linuxboot.cfg
+	@ls -l $@
+
+bigsin  :
+	perl ./bigsin.pl
